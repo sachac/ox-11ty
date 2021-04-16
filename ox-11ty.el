@@ -6,7 +6,7 @@
 ;; Version: 2.17.0
 ;; Package-Requires: ((emacs "27"))
 ;; Keywords: org, eleventy, 11ty
-;; Homepage: https://github.com/sachac/ox-11ty.el
+;; Homepage: https://github.com/sachac/ox-11ty
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
