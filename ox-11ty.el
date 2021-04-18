@@ -67,16 +67,18 @@
            (org-export--get-buffer-attributes)
            (org-export-get-environment '11ty subtreep)))
          (base-file-name (concat (or
-                                  (if (string= (file-name-base (plist-get info :file-name)) "")
-                                      (concat (plist-get info :file-name) "index")
-                                    (plist-get info :file-name))
+                                  (and (plist-get info :file-name)
+                                       (if (string= (file-name-base (plist-get info :file-name)) "")
+                                           (concat (plist-get info :file-name) "index")
+                                         (plist-get info :file-name)))
                                   (org-export-output-file-name "" subtreep))
                                  ".11ty.js"))
          (file
           (if (plist-get info :base-dir)
               (expand-file-name base-file-name (plist-get info :base-dir))
             base-file-name)))
-    (make-directory (file-name-directory file) :parents)
+    (when (file-name-directory file)
+      (make-directory (file-name-directory file) :parents))
     (org-export-to-file '11ty file
       async subtreep visible-only body-only ext-plist)))
 
