@@ -61,7 +61,22 @@
 
 (defun org-11ty-export-to-11ty (&optional async subtreep visible-only body-only ext-plist)
   (interactive)
-  (let ((file (org-export-output-file-name ".11ty.js" subtreep)))
+  (let* ((info
+          (org-combine-plists
+           (org-export--get-export-attributes '11ty subtreep visible-only)
+           (org-export--get-buffer-attributes)
+           (org-export-get-environment '11ty subtreep)))
+         (base-file-name (concat (or
+                                  (if (string= (file-name-base (plist-get info :file-name)) "")
+                                      (concat (plist-get info :file-name) "index")
+                                    (plist-get info :file-name))
+                                  (org-export-output-file-name "" subtreep))
+                                 ".11ty.js"))
+         (file
+          (if (plist-get info :base-dir)
+              (expand-file-name base-file-name (plist-get info :base-dir))
+            base-file-name)))
+    (make-directory (file-name-directory file) :parents)
     (org-export-to-file '11ty file
       async subtreep visible-only body-only ext-plist)))
 
@@ -74,7 +89,9 @@
   '((template . org-11ty-template))
   :options-alist
   '((:permalink "PERMALINK" nil nil)
-    (:categories "CATEGORIES" nil nil)
-    (:collections "COLLECTIONS" nil 'parse)))
+    (:categories "CATEGORIES" nil 'split)
+    (:base-dir "ELEVENTY_BASE_DIR" nil nil)
+    (:file-name "FILE_NAME" nil nil)
+    (:collections "ELEVENTY_COLLECTIONS" nil 'split)))
 
 ;;; ox-11ty.el ends here
