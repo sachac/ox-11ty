@@ -122,29 +122,53 @@
               file-all-urls)))
     text))
 
-(defun org-11ty-export-to-11tydata-and-html (&optional async subtreep visible-only body-only ext-plist)
-  (interactive)
+(defun org-11ty--base-file-name (subtreep visible-only)
+  "Return the path to the output file, sans extension."
   (let* ((info (org-11ty--get-info subtreep visible-only))
-         (base-file-name (or
-                          (and (plist-get info :file-name)
-                               (if (string= (file-name-base (plist-get info :file-name)) "")
-                                   (concat (plist-get info :file-name) "index")
-                                 (plist-get info :file-name)))
-                          (org-export-output-file-name "" subtreep)))
-         (file
-          (if (plist-get info :base-dir)
-              (expand-file-name base-file-name (plist-get info :base-dir))
-            base-file-name)))
+         (base-file-name
+          (or
+           (and (plist-get info :file-name)
+                (if (string= (file-name-base (plist-get info :file-name)) "")
+                    (concat (plist-get info :file-name) "index")
+                  (plist-get info :file-name)))
+           (org-export-output-file-name "" subtreep))))
+    (if (plist-get info :base-dir)
+        (expand-file-name base-file-name (plist-get info :base-dir))
+      base-file-name)))
+
+(defun org-11ty-export-to-11tydata (&optional async subtreep visible-only body-only ext-plist)
+  (let* ((info (org-11ty--get-info subtreep visible-only))
+         (file (org-11ty--base-file-name subtreep visible-only)))
     (plist-put info :file-path file)
     (when (file-name-directory file)
       (make-directory (file-name-directory file) :parents))
     (with-temp-file (concat file ".11tydata.json")
-      (insert (json-encode (org-11ty--front-matter info))))
-    (let ((body (org-11ty--copy-files-and-replace-links
-                 info
-                 (org-export-as 'html subtreep visible-only t ext-plist))))
+      (insert (json-encode (org-11ty--front-matter info))))))
+
+(defun org-11ty-export-to-11tydata-and-html (&optional async subtreep visible-only body-only ext-plist)
+  (interactive)
+  (let* ((info (org-11ty--get-info subtreep visible-only))
+         (file (org-11ty--base-file-name subtreep visible-only)))
+    (plist-put info :file-path file)
+    (when (file-name-directory file) (make-directory (file-name-directory file) :parents))
+    (with-temp-file (concat file ".11tydata.json") (insert (json-encode (org-11ty--front-matter info))))
+    (let ((body (org-11ty--copy-files-and-replace-links info (org-export-as '11ty subtreep visible-only t ext-plist))))
       (with-temp-file (concat file ".html")
         (insert body)))))
+
+(defun org-11ty-export-block (export-block _contents _info)
+  "Transcode a EXPORT-BLOCK element from Org to 11ty.
+CONTENTS is nil.  INFO is a plist holding contextual information."
+  (when (or (string= (org-element-property :type export-block) "11TY")
+            (string= (org-element-property :type export-block) "HTML"))
+    (org-remove-indentation (org-element-property :value export-block))))
+
+(defun org-11ty-export-snippet (export-snippet _contents _info)
+  "Transcode a EXPORT-SNIPPET object from Org to 11ty.
+CONTENTS is nil.  INFO is a plist holding contextual
+information."
+  (when (member (org-export-snippet-backend export-snippet) '(11ty html))
+    (org-element-property :value export-snippet)))
 
 (org-export-define-derived-backend '11ty 'html
   :menu-entry
@@ -152,8 +176,9 @@
        ((?b "As buffer" org-11ty-export-as-11ty) 
         (?j "To 11ty.js file" org-11ty-export-to-11ty)
         (?1 "To 11tydata.json and HTML file" org-11ty-export-to-11tydata-and-html)))
-  :translate-alist
-  '((template . org-11ty-template))
+  :translate-alist '((export-block . org-11ty-export-block)
+                     (export-snippet . org-11ty-export-snippet))
+  ;; '((template . org-11ty-template))
   :options-alist
   '((:permalink "ELEVENTY_PERMALINK" nil nil)
     (:categories "ELEVENTY_CATEGORIES" nil nil split)
