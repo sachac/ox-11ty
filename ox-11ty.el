@@ -97,7 +97,7 @@
 (defun org-11ty--copy-files-and-replace-links (info text)
   (let ((file-regexp "<img src=\"\\(.*?\\)\"")
         (destination-dir (file-name-directory (plist-get info :file-path)))
-        file-all-urls file-name file-web-url beg file-thumbnail-name upload-ret)
+        file-all-urls file-name beg)
     (save-excursion
       (while (string-match file-regexp text beg)
         (setq file-name
@@ -111,13 +111,15 @@
         (unless (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
           (copy-file file-name destination-dir))
         (when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
-          (add-to-list 'file-all-urls (cons file-name (concat (plist-get info :permalink)
-                                                              (file-name-nondirectory file-name))))))
-      (mapcar (lambda (file) 
-                (setq text (replace-regexp-in-string
-                            (concat "\\(<a href=\"\\|<img src=\"\\)\\(file://\\)*" (regexp-quote (car file)))
-                            (concat "\\1" (cdr file)) text)))
-              file-all-urls))
+          (setq file-all-urls
+                (cons (cons file-name (concat (plist-get info :permalink)
+                                              (file-name-nondirectory file-name)))
+                      file-all-urls)))
+        (mapc (lambda (file)
+                  (setq text (replace-regexp-in-string
+                              (concat "\\(<a href=\"\\|<img src=\"\\)\\(file://\\)*" (regexp-quote (car file)))
+                              (concat "\\1" (cdr file)) text)))
+              file-all-urls)))
     text))
 
 (defun org-11ty-export-to-11tydata-and-html (&optional async subtreep visible-only body-only ext-plist)
