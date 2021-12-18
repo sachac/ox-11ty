@@ -156,6 +156,19 @@
       (with-temp-file (concat file ".html")
         (insert body)))))
 
+(defun org-11ty-export-to-org (&optional async subtreep visible-only body-only ext-plist)
+  "Export this post as an Org file in the output directory."
+  (interactive)
+  (let* ((info (org-11ty--get-info subtreep visible-only))
+         (file (org-11ty--base-file-name subtreep visible-only)))
+    (plist-put info :file-path file)
+    (when (file-name-directory file) (make-directory (file-name-directory file) :parents))
+    (with-temp-file (concat file ".11tydata.json") (insert (json-encode (org-11ty--front-matter info))))
+    (let ((body (org-export-as 'org subtreep visible-only t ext-plist)))
+      (with-temp-file (concat file ".org")
+        (save-excursion
+          (insert body))))))
+
 (defun org-11ty-export-block (export-block _contents _info)
   "Transcode a EXPORT-BLOCK element from Org to 11ty.
 CONTENTS is nil.  INFO is a plist holding contextual information."
@@ -170,14 +183,24 @@ information."
   (when (member (org-export-snippet-backend export-snippet) '(11ty html))
     (org-element-property :value export-snippet)))
 
+(defun org-11ty-link (link desc info)
+  "Transcode a LINK object from Org to HTML.
+DESC is the description part of the link, or the empty string.
+INFO is a plist holding contextual information.  See
+`org-export-data'."
+  (or (org-export-custom-protocol-maybe link desc '11ty info)
+      (org-html-link link desc info)))
+
 (org-export-define-derived-backend '11ty 'html
   :menu-entry
   '(?1 "Export to 11ty JS"
-       ((?b "As buffer" org-11ty-export-as-11ty) 
+       ((?1 "To 11tydata.json and HTML file" org-11ty-export-to-11tydata-and-html)
         (?j "To 11ty.js file" org-11ty-export-to-11ty)
-        (?1 "To 11tydata.json and HTML file" org-11ty-export-to-11tydata-and-html)))
+        (?o "To Org file" org-11ty-export-to-org)
+        (?b "As buffer" org-11ty-export-as-11ty) ))
   :translate-alist '((export-block . org-11ty-export-block)
-                     (export-snippet . org-11ty-export-snippet))
+                     (export-snippet . org-11ty-export-snippet)
+                     (link . org-11ty-link))
   ;; '((template . org-11ty-template))
   :options-alist
   '((:permalink "ELEVENTY_PERMALINK" nil nil)
