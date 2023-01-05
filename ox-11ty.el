@@ -71,7 +71,9 @@
     (unless (plist-get info :categories)
       (plist-put info :categories (let ((org-use-tag-inheritance t)) (org-get-tags))))
     (unless (plist-get info :permalink)
-      (plist-put info :permalink (concat "/" (plist-get info :file-name))))
+      (error "No permalink set")
+      ;; (plist-put info :permalink (concat "/" (plist-get info :file-name)))
+      )
     info))
 
 (defun org-11ty-export-to-11ty (&optional async subtreep visible-only body-only ext-plist)
@@ -95,7 +97,7 @@
       async subtreep visible-only body-only ext-plist)))
 
 (defun org-11ty--copy-files-and-replace-links (info text)
-  (let ((file-regexp "<img src=\"\\(.*?\\)\"")
+  (let ((file-regexp "\\(?:src\\|href\\)=\"\\(file:.*?\\)\"")
         (destination-dir (file-name-directory (plist-get info :file-path)))
         file-all-urls file-name beg)
     (save-excursion
@@ -108,17 +110,18 @@
         (setq file-name (save-match-data (if (string-match "^file:" file-name)
                                              (substring file-name 7)
                                            file-name)))
-        (unless (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
-          (copy-file file-name destination-dir))
+				(condition-case err
+						(copy-file file-name destination-dir t)
+					(error nil))
         (when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
           (setq file-all-urls
                 (cons (cons file-name (concat (plist-get info :permalink)
                                               (file-name-nondirectory file-name)))
                       file-all-urls)))
         (mapc (lambda (file)
-                  (setq text (replace-regexp-in-string
-                              (concat "\\(<a href=\"\\|<img src=\"\\)\\(file://\\)*" (regexp-quote (car file)))
-                              (concat "\\1" (cdr file)) text)))
+                (setq text (replace-regexp-in-string
+                            (concat "\\(<a href=\"\\|<img src=\"\\)\\(file://\\)*" (regexp-quote (car file)))
+                            (concat "\\1" (cdr file)) text)))
               file-all-urls)))
     text))
 
@@ -189,7 +192,8 @@ DESC is the description part of the link, or the empty string.
 INFO is a plist holding contextual information.  See
 `org-export-data'."
   (or (org-export-custom-protocol-maybe link desc '11ty info)
-      (org-html-link link desc info)))
+			;; handle file links
+			(org-html-link link desc info)))
 
 (org-export-define-derived-backend '11ty 'html
   :menu-entry
