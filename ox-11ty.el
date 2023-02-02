@@ -97,7 +97,7 @@
       async subtreep visible-only body-only ext-plist)))
 
 (defun org-11ty--copy-files-and-replace-links (info text)
-  (let ((file-regexp "\\(?:src\\|href\\)=\"\\(file:.*?\\)\"")
+  (let ((file-regexp "\\(?:src\\|href\\)=\"\\(\\(file:\\)?.*?\\)\"")
         (destination-dir (file-name-directory (plist-get info :file-path)))
         file-all-urls file-name beg)
     (save-excursion
@@ -107,22 +107,23 @@
                   (substring text (match-beginning 1) (match-end 1))
                 (substring text (match-beginning 2) (match-end 2)))
               beg (match-end 1))
-        (setq file-name (save-match-data (if (string-match "^file:" file-name)
-                                             (substring file-name 7)
-                                           file-name)))
-				(condition-case err
-						(copy-file file-name destination-dir t)
-					(error nil))
-        (when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
-          (setq file-all-urls
-                (cons (cons file-name (concat (plist-get info :permalink)
-                                              (file-name-nondirectory file-name)))
-                      file-all-urls)))
-        (mapc (lambda (file)
-                (setq text (replace-regexp-in-string
-                            (concat "\\(<a href=\"\\|<img src=\"\\)\\(file://\\)*" (regexp-quote (car file)))
-                            (concat "\\1" (cdr file)) text)))
-              file-all-urls)))
+				(setq file-name (save-match-data (if (string-match "^file:" file-name)
+																							 (substring file-name 7)
+																						 file-name)))
+				(unless (org-url-p file-name)
+					(condition-case err
+							(copy-file file-name destination-dir t)
+						(error nil))
+					(when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
+						(setq file-all-urls
+									(cons (cons file-name (concat (plist-get info :permalink)
+																								(file-name-nondirectory file-name)))
+												file-all-urls)))
+					(mapc (lambda (file)
+									(setq text (replace-regexp-in-string
+															(concat "\\(<a href=\"\\|<img src=\"\\)\\(file://\\)?" (regexp-quote (car file)))
+															(concat "\\1" (cdr file)) text)))
+								file-all-urls))))
     text))
 
 (defun org-11ty--base-file-name (subtreep visible-only)
