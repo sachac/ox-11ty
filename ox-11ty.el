@@ -121,7 +121,7 @@
 												file-all-urls)))
 					(mapc (lambda (file)
 									(setq text (replace-regexp-in-string
-															(concat "\\(<a href=\"\\|<img src=\"\\)\\(file://\\)?" (regexp-quote (car file)))
+															(concat "\\( src=\"\\| href=\"\\)\\(file://\\)?" (regexp-quote (car file)))
 															(concat "\\1" (cdr file)) text)))
 								file-all-urls))))
     text))
