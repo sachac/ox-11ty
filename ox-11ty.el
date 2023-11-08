@@ -116,7 +116,8 @@
 						(error nil))
 					(when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
 						(setq file-all-urls
-									(cons (cons file-name (concat (plist-get info :permalink)
+									(cons (cons file-name (concat (or (plist-get info :base-url) "")
+																								(plist-get info :permalink)
 																								(file-name-nondirectory file-name)))
 												file-all-urls)))
 					(mapc (lambda (file)
@@ -211,6 +212,7 @@ INFO is a plist holding contextual information.  See
   '((:permalink "ELEVENTY_PERMALINK" nil nil)
     (:categories "ELEVENTY_CATEGORIES" nil nil split)
     (:base-dir "ELEVENTY_BASE_DIR" nil nil)
+    (:base-url "ELEVENTY_BASE_URL" nil nil)
     (:modified "MODIFIED" nil nil)
     (:file-name "ELEVENTY_FILE_NAME" nil nil)
     (:collections "ELEVENTY_COLLECTIONS" nil nil split)))
