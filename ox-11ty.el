@@ -197,6 +197,11 @@ INFO is a plist holding contextual information.  See
 			;; handle file links
 			(org-html-link link desc info)))
 
+(defun org-11ty-src-block (src-block contents info)
+	"Wrap source blocks in raw directives."
+	(format "{%% raw %%}\n%s\n{%% endraw %%}\n"
+					(org-html-src-block src-block contents info)))
+
 (org-export-define-derived-backend '11ty 'html
   :menu-entry
   '(?1 "Export to 11ty JS"
@@ -206,6 +211,7 @@ INFO is a plist holding contextual information.  See
         (?b "As buffer" org-11ty-export-as-11ty) ))
   :translate-alist '((export-block . org-11ty-export-block)
                      (export-snippet . org-11ty-export-snippet)
+										 (src-block . org-11ty-src-block)
                      (link . org-11ty-link))
   ;; '((template . org-11ty-template))
   :options-alist
