@@ -37,13 +37,18 @@
          (modified (plist-get info :modified))
          (permalink (plist-get info :permalink))
          (categories (plist-get info :categories))
-         (collections (plist-get info :collections)))
-    (list :permalink permalink
-          :date (if (listp date) (car date) date)
-          :modified (if (listp modified) (car modified) modified)
-          :title (if (listp title) (car title) title)
-          :categories (if (stringp categories) (split-string categories) categories)
-          :tags (if (stringp collections) (split-string collections) collections))))
+         (collections (plist-get info :collections))
+				 (extra (if (plist-get info :extra) (json-parse-string
+																						 (plist-get info :extra)
+																						 :object-type 'plist))))
+		(append
+		 extra
+     (list :permalink permalink
+           :date (if (listp date) (car date) date)
+           :modified (if (listp modified) (car modified) modified)
+           :title (if (listp title) (car title) title)
+           :categories (if (stringp categories) (split-string categories) categories)
+           :tags (if (stringp collections) (split-string collections) collections)))))
 
 (defun org-11ty-template (contents info)
   (format
@@ -76,56 +81,29 @@
       )
     info))
 
-(defun org-11ty-export-to-11ty (&optional async subtreep visible-only body-only ext-plist)
-  (interactive)
-  (let* ((info (org-11ty--get-info subtreep visible-only))
-         (base-file-name (concat (or
-                                  (and (plist-get info :file-name)
-                                       (if (string= (file-name-base (plist-get info :file-name)) "")
-                                           (concat (plist-get info :file-name) "index")
-                                         (plist-get info :file-name)))
-                                  (org-export-output-file-name "" subtreep))
-                                 ".11ty.js"))
-         (file
-          (if (plist-get info :base-dir)
-              (expand-file-name base-file-name (plist-get info :base-dir))
-            base-file-name)))
-    (plist-put info :file file)
-    (when (file-name-directory file)
-      (make-directory (file-name-directory file) :parents))
-    (org-export-to-file '11ty file
-      async subtreep visible-only body-only ext-plist)))
-
-(defun org-11ty--copy-files-and-replace-links (info text)
+(defun org-11ty--copy-files-and-replace-links (info)
   (let ((file-regexp "\\(?:src\\|href\\)=\"\\(\\(file:\\)?.*?\\)\"")
         (destination-dir (file-name-directory (plist-get info :file-path)))
-        file-all-urls file-name beg)
+        file-all-urls file-name beg
+				new-file file-re)
     (save-excursion
-      (while (string-match file-regexp text beg)
-        (setq file-name
-              (if (match-beginning 1)
-                  (substring text (match-beginning 1) (match-end 1))
-                (substring text (match-beginning 2) (match-end 2)))
-              beg (match-end 1))
+			(goto-char (point-min))
+      (while (re-search-forward file-regexp nil t)
+        (setq file-name (or (match-string 1) (match-string 2)))
 				(setq file-name (save-match-data (if (string-match "^file:" file-name)
-																							 (substring file-name 7)
-																						 file-name)))
+																						 (substring file-name 7)
+																					 file-name)))
+				(setq new-file (concat (plist-get info :permalink)
+															 (file-name-nondirectory file-name)))
 				(unless (org-url-p file-name)
 					(condition-case err
 							(copy-file file-name destination-dir t)
 						(error nil))
 					(when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
-						(setq file-all-urls
-									(cons (cons file-name (concat (or (plist-get info :base-url) "")
-																								(plist-get info :permalink)
-																								(file-name-nondirectory file-name)))
-												file-all-urls)))
-					(mapc (lambda (file)
-									(setq text (replace-regexp-in-string
-															(concat "\\( src=\"\\| href=\"\\)\\(file://\\)?" (regexp-quote (car file)))
-															(concat "\\1" (cdr file)) text)))
-								file-all-urls))))
-    text))
+						(save-excursion
+							(setq file-re (concat "\\(?: src=\"\\| href=\"\\)\\(?:file://\\)?\\(" (regexp-quote file-name) "\\)"))
+							(while (re-search-forward file-re nil t)
+								(replace-match new-file t t nil 1)))))))))
 
 (defun org-11ty--base-file-name (subtreep visible-only)
   "Return the path to the output file, sans extension."
@@ -150,6 +128,10 @@
     (with-temp-file (concat file ".11tydata.json")
       (insert (json-encode (org-11ty--front-matter info))))))
 
+(defvar org-11ty-process-export-functions '(org-11ty--copy-files-and-replace-links)
+	"List of functions to run after exporting.
+They will be called with the org-11ty--get-info info.")
+
 (defun org-11ty-export-to-11tydata-and-html (&optional async subtreep visible-only body-only ext-plist)
   (interactive)
   (let* ((info (org-11ty--get-info subtreep visible-only))
@@ -157,9 +139,10 @@
     (plist-put info :file-path file)
     (when (file-name-directory file) (make-directory (file-name-directory file) :parents))
     (with-temp-file (concat file ".11tydata.json") (insert (json-encode (org-11ty--front-matter info))))
-    (let ((body (org-11ty--copy-files-and-replace-links info (org-export-as '11ty subtreep visible-only t ext-plist))))
+    (let ((body (org-export-as '11ty subtreep visible-only t ext-plist)))
       (with-temp-file (concat file ".html")
-        (insert body)))))
+        (insert body)
+				(run-hook-with-args 'org-11ty-process-export-functions info)))))
 
 (defun org-11ty-export-to-org (&optional async subtreep visible-only body-only ext-plist)
   "Export this post as an Org file in the output directory."
@@ -206,7 +189,6 @@ INFO is a plist holding contextual information.  See
   :menu-entry
   '(?1 "Export to 11ty JS"
        ((?1 "To 11tydata.json and HTML file" org-11ty-export-to-11tydata-and-html)
-        (?j "To 11ty.js file" org-11ty-export-to-11ty)
         (?o "To Org file" org-11ty-export-to-org)
         (?b "As buffer" org-11ty-export-as-11ty) ))
   :translate-alist '((export-block . org-11ty-export-block)
@@ -221,6 +203,7 @@ INFO is a plist holding contextual information.  See
     (:base-url "ELEVENTY_BASE_URL" nil nil)
     (:modified "MODIFIED" nil nil)
     (:file-name "ELEVENTY_FILE_NAME" nil nil)
+    (:extra "ELEVENTY_EXTRA" nil nil)
     (:collections "ELEVENTY_COLLECTIONS" nil nil split)))
 
 (provide 'ox-11ty)
