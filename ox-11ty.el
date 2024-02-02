@@ -93,8 +93,10 @@
 				(setq file-name (save-match-data (if (string-match "^file:" file-name)
 																						 (substring file-name 7)
 																					 file-name)))
-				(setq new-file (concat (plist-get info :permalink)
-															 (file-name-nondirectory file-name)))
+				(setq new-file (concat
+												(plist-get info :base-url)
+												(plist-get info :permalink)
+												(file-name-nondirectory file-name)))
 				(unless (org-url-p file-name)
 					(condition-case err
 							(copy-file file-name destination-dir t)
@@ -102,7 +104,7 @@
 					(when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
 						(save-excursion
 							(goto-char (point-min))
-							(setq file-re (concat "\\(?: src=\"\\| href=\"\\)\\(?:file://\\)?\\(" (regexp-quote file-name) "\\)"))
+							(setq file-re (concat "\\(?: src=\"\\| href=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
 							(while (re-search-forward file-re nil t)
 								(replace-match new-file t t nil 1)))))))))
 
