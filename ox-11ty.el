@@ -94,7 +94,6 @@
 																						 (substring file-name 7)
 																					 file-name)))
 				(setq new-file (concat
-												(plist-get info :base-url)
 												(plist-get info :permalink)
 												(file-name-nondirectory file-name)))
 				(unless (org-url-p file-name)
