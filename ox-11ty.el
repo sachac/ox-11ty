@@ -101,6 +101,7 @@
 						(error nil))
 					(when (file-exists-p (expand-file-name (file-name-nondirectory file-name) destination-dir))
 						(save-excursion
+							(goto-char (point-min))
 							(setq file-re (concat "\\(?: src=\"\\| href=\"\\)\\(?:file://\\)?\\(" (regexp-quote file-name) "\\)"))
 							(while (re-search-forward file-re nil t)
 								(replace-match new-file t t nil 1)))))))))
