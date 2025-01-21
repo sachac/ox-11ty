@@ -82,7 +82,7 @@
     info))
 
 (defun org-11ty--copy-files-and-replace-links (info)
-  (let ((file-regexp "\\(?:src\\|href\\)=\"\\(\\(file:\\)?.*?\\)\"")
+  (let ((file-regexp "\\(?:src\\|href\\|poster\\)=\"\\(\\(file:\\)?.*?\\)\"")
         (destination-dir (file-name-directory (plist-get info :file-path)))
         file-all-urls file-name beg
 				new-file file-re
@@ -100,7 +100,7 @@
 				(setq new-file (concat
 												(plist-get info :permalink)
 												(file-name-nondirectory unescaped)))
-				(unless (org-url-p file-name)
+				(unless (or (string-match "^/" file-name) (org-url-p file-name))
 					(condition-case err
 							(copy-file unescaped destination-dir t)
 						(error nil))
@@ -109,7 +109,7 @@
 																								 destination-dir))
 						(save-excursion
 							(goto-char (point-min))
-							(setq file-re (concat "\\(?: src=\"\\| href=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
+							(setq file-re (concat "\\(?: src=\"\\| href=\"\\| poster=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
 							(while (re-search-forward file-re nil t)
 								(replace-match (save-match-data (replace-regexp-in-string "#" "%23" new-file))
 															 t t nil 1)))))))))
