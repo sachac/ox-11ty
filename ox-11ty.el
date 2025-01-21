@@ -100,7 +100,7 @@
 				(setq new-file (concat
 												(plist-get info :permalink)
 												(file-name-nondirectory unescaped)))
-				(unless (or (string-match "^/" file-name) (org-url-p file-name))
+				(unless (or (string-match "^[/#]" file-name) (org-url-p file-name))
 					(condition-case err
 							(copy-file unescaped destination-dir t)
 						(error nil))
