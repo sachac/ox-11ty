@@ -30,6 +30,8 @@
 
 (require 'ox-html)
 
+(defvar org-11ty-front-matter-functions nil
+	"Functions to call with the current front matter plist and info.")
 (defun org-11ty--front-matter (info)
   "Return front matter for INFO."
   (let* ((date (plist-get info :date))
@@ -41,14 +43,18 @@
 				 (extra (if (plist-get info :extra) (json-parse-string
 																						 (plist-get info :extra)
 																						 :object-type 'plist))))
-		(append
-		 extra
-     (list :permalink permalink
-           :date (if (listp date) (car date) date)
-           :modified (if (listp modified) (car modified) modified)
-           :title (if (listp title) (car title) title)
-           :categories (if (stringp categories) (split-string categories) categories)
-           :tags (if (stringp collections) (split-string collections) collections)))))
+		(seq-reduce
+		 (lambda (prev val)
+			 (funcall val prev info))
+		 org-11ty-front-matter-functions
+		 (append
+			extra
+			(list :permalink permalink
+						:date (if (listp date) (car date) date)
+						:modified (if (listp modified) (car modified) modified)
+						:title (if (listp title) (car title) title)
+						:categories (if (stringp categories) (split-string categories) categories)
+						:tags (if (stringp collections) (split-string collections) collections))))))
 
 (defun org-11ty-template (contents info)
   (format
