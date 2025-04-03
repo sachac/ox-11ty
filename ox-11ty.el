@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Sacha Chua
 
 ;; Author: Sacha Chua <sacha@sachachua.com>
-;; Version: 2.17.0
+;; Version: 2.17.1
 ;; Package-Requires: ((emacs "27"))
 ;; Keywords: org, eleventy, 11ty
 ;; Homepage: https://github.com/sachac/ox-11ty
@@ -29,6 +29,22 @@
 ;;; Code:
 
 (require 'ox-html)
+
+(defgroup org-export-11ty nil
+  "Options for exporting Org mode files to 11ty."
+  :tag "Org Export 11ty"
+  :group 'org-export)
+
+(defcustom org-11ty-toplevel-hlevel 3
+  "The <H> level for level 1 headings in 11ty export.
+This is also important for the classes that will be wrapped around headlines
+and outline structure.  If this variable is 1, the top-level headlines will
+be <h1>, and the corresponding classes will be outline-1, section-number-1,
+and outline-text-1.  If this is 2, all of these will get a 2 instead.
+The default for this variable is 3, because your layout might use <h2>
+for formatting the post title."
+  :group 'org-export-11ty
+  :type 'integer)
 
 (defvar org-11ty-front-matter-functions nil
 	"Functions to call with the current front matter plist and info.")
@@ -220,7 +236,8 @@ INFO is a plist holding contextual information.  See
     (:modified "MODIFIED" nil nil)
     (:file-name "ELEVENTY_FILE_NAME" nil nil)
     (:extra "ELEVENTY_EXTRA" nil nil)
-    (:collections "ELEVENTY_COLLECTIONS" nil nil split)))
+    (:collections "ELEVENTY_COLLECTIONS" nil nil split)
+		(:html-toplevel-hlevel nil nil org-11ty-toplevel-hlevel)))
 
 (provide 'ox-11ty)
 ;;; ox-11ty.el ends here
