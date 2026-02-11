@@ -114,28 +114,34 @@ for formatting the post title."
       (while (re-search-forward file-regexp nil t)
         (setq file-name (or (match-string 1) (match-string 2)))
 				(unless (string-match "^[/#]" file-name)
-					(setq file-name (save-match-data (if (string-match "^file:" file-name)
-																							 (substring file-name 7)
-																						 file-name)))
-					(setq unescaped (replace-regexp-in-string
-													 "%23" "#"
-													 file-name))
+					(setq file-name
+                (replace-regexp-in-string
+                 "\\?.+" ""
+                 (save-match-data (if (string-match "^file:" file-name)
+																		  (substring file-name 7)
+																	  file-name))))
+          (setq unescaped
+                (replace-regexp-in-string
+									"%23" "#"
+									file-name))
 					(setq new-file (concat
 													(plist-get info :permalink)
 													(file-name-nondirectory unescaped)))
 					(unless (org-url-p file-name)
-						(condition-case err
-								(copy-file unescaped destination-dir t)
-							(error nil))
-						(when (file-exists-p (expand-file-name (file-name-nondirectory
-																										unescaped)
-																									 destination-dir))
-							(save-excursion
-								(goto-char (point-min))
-								(setq file-re (concat "\\(?: src=\"\\| href=\"\\| poster=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
-								(while (re-search-forward file-re nil t)
-									(replace-match (save-match-data (replace-regexp-in-string "#" "%23" new-file))
-																 t t nil 1))))))))))
+            (let ((new-file-name (expand-file-name (file-name-nondirectory unescaped)
+                                                   destination-dir)))
+						  (condition-case err
+                  (when (or (not (file-exists-p new-file-name))
+                            (file-newer-than-file-p unescaped new-file-name))
+							      (copy-file unescaped destination-dir t))
+							  (error nil))
+						  (when (file-exists-p new-file-name)
+							  (save-excursion
+								  (goto-char (point-min))
+								  (setq file-re (concat "\\(?: src=\"\\| href=\"\\| poster=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
+								  (while (re-search-forward file-re nil t)
+									  (replace-match (save-match-data (replace-regexp-in-string "#" "%23" new-file))
+																   t t nil 1)))))))))))
 
 (defun org-11ty--base-file-name (subtreep visible-only)
   "Return the path to the output file, sans extension."
