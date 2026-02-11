@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Sacha Chua
 
 ;; Author: Sacha Chua <sacha@sachachua.com>
-;; Version: 2.17.1
+;; Version: 2.17.2
 ;; Package-Requires: ((emacs "27"))
 ;; Keywords: org, eleventy, 11ty
 ;; Homepage: https://github.com/sachac/ox-11ty
