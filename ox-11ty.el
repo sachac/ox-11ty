@@ -103,9 +103,9 @@ for formatting the post title."
       )
     info))
 
-(defun org-11ty--copy-files-and-replace-links (info)
+(defun org-11ty--copy-files-and-replace-links (info &optional destination-dir)
   (let ((file-regexp "\\(?:src\\|href\\|poster\\)=\"\\(\\(file:\\)?.*?\\)\"")
-        (destination-dir (file-name-directory (plist-get info :file-path)))
+        (destination-dir (or destination-dir (file-name-directory (plist-get info :file-path))))
         file-all-urls file-name beg
 				new-file file-re
 				unescaped)
@@ -113,7 +113,8 @@ for formatting the post title."
 			(goto-char (point-min))
       (while (re-search-forward file-regexp nil t)
         (setq file-name (or (match-string 1) (match-string 2)))
-				(unless (string-match "^[/#]" file-name)
+				(unless (or (string-match "^#" file-name)
+                    (get-text-property 0 'changed file-name))
 					(setq file-name
                 (replace-regexp-in-string
                  "\\?.+" ""
@@ -125,7 +126,7 @@ for formatting the post title."
 									"%23" "#"
 									file-name))
 					(setq new-file (concat
-													(plist-get info :permalink)
+													(if info (plist-get info :permalink) "")
 													(file-name-nondirectory unescaped)))
 					(unless (org-url-p file-name)
             (let ((new-file-name (expand-file-name (file-name-nondirectory unescaped)
@@ -140,8 +141,11 @@ for formatting the post title."
 								  (goto-char (point-min))
 								  (setq file-re (concat "\\(?: src=\"\\| href=\"\\| poster=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
 								  (while (re-search-forward file-re nil t)
-									  (replace-match (save-match-data (replace-regexp-in-string "#" "%23" new-file))
-																   t t nil 1)))))))))))
+									  (replace-match
+                     (propertize
+                      (save-match-data (replace-regexp-in-string "#" "%23" new-file))
+                      'changed t)
+										 t t nil 1)))))))))))
 
 (defun org-11ty--base-file-name (subtreep visible-only)
   "Return the path to the output file, sans extension."
