@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Sacha Chua
 
 ;; Author: Sacha Chua <sacha@sachachua.com>
-;; Version: 2.17.2
+;; Version: 2.17.3
 ;; Package-Requires: ((emacs "27"))
 ;; Keywords: org, eleventy, 11ty
 ;; Homepage: https://github.com/sachac/ox-11ty
@@ -45,6 +45,11 @@ The default for this variable is 3, because your layout might use <h2>
 for formatting the post title."
   :group 'org-export-11ty
   :type 'integer)
+
+(defcustom org-11ty-skip-private-files-regexp "gpg\\|private\\|secret\\|authinfo\\|ssh"
+	"Regular expression matching linked files that should cause an error when exporting."
+	:group 'org-export-11ty
+	:type 'string)
 
 (defvar org-11ty-front-matter-functions nil
 	"Functions to call with the current front matter plist and info.")
@@ -103,6 +108,17 @@ for formatting the post title."
       )
     info))
 
+(defun org-11ty-skip-private-files (filename)
+	"Filter out `org-11ty-skip-private-files-regexp' from FILENAME."
+	(if (string-match org-11ty-skip-private-files-regexp filename)
+			(error "Tried to link to %s" filename)
+		t))
+
+(defvar org-11ty-copy-file-test-function #'org-11ty-skip-private-files
+	"Function to use to check whether a file is okay to copy.
+If specified, this function is called with the filename and the file is
+copied only if the function returns non-nil.")
+
 (defun org-11ty--copy-files-and-replace-links (info &optional destination-dir)
   (let ((file-regexp "\\(?:src\\|href\\|poster\\)=\"\\(\\(file:\\)?.*?\\)\"")
         (destination-dir (or destination-dir (file-name-directory (plist-get info :file-path))))
@@ -114,37 +130,42 @@ for formatting the post title."
       (while (re-search-forward file-regexp nil t)
         (setq file-name (or (match-string 1) (match-string 2)))
 				(unless (or (string-match "^#" file-name)
-                    (get-text-property 0 'changed file-name))
+										(get-text-property 0 'changed file-name)
+										(and org-11ty-copy-file-test-function
+												 (not (funcall org-11ty-copy-file-test-function file-name))))
 					(setq file-name
-                (replace-regexp-in-string
-                 "\\?.+" ""
-                 (save-match-data (if (string-match "^file:" file-name)
-																		  (substring file-name 7)
-																	  file-name))))
-          (setq unescaped
-                (replace-regexp-in-string
-									"%23" "#"
-									file-name))
+								(replace-regexp-in-string
+								 "\\?.+" ""
+								 (save-match-data (if (string-match "^file:" file-name)
+																			(substring file-name 7)
+																		file-name))))
+					(setq unescaped
+								(replace-regexp-in-string
+								 "%23" "#"
+								 file-name))
 					(setq new-file (concat
 													(if info (plist-get info :permalink) "")
 													(file-name-nondirectory unescaped)))
 					(unless (org-url-p file-name)
-            (let ((new-file-name (expand-file-name (file-name-nondirectory unescaped)
-                                                   destination-dir)))
-						  (condition-case err
-                  (when (or (not (file-exists-p new-file-name))
-                            (file-newer-than-file-p unescaped new-file-name))
-							      (copy-file unescaped destination-dir t))
-							  (error nil))
-						  (when (file-exists-p new-file-name)
-							  (save-excursion
-								  (goto-char (point-min))
-								  (setq file-re (concat "\\(?: src=\"\\| href=\"\\| poster=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
-								  (while (re-search-forward file-re nil t)
-									  (replace-match
-                     (propertize
-                      (save-match-data (replace-regexp-in-string "#" "%23" new-file))
-                      'changed t)
+						(let ((new-file-name (expand-file-name (file-name-nondirectory unescaped)
+																									 destination-dir)))
+							(unless (file-directory-p destination-dir)
+								(make-directory destination-dir t))
+							(condition-case err
+									(when (and (file-exists-p unescaped)
+														 (or (not (file-exists-p new-file-name))
+																 (file-newer-than-file-p unescaped new-file-name)))
+										(copy-file unescaped destination-dir t))
+								(error nil))
+							(when (file-exists-p new-file-name)
+								(save-excursion
+									(goto-char (point-min))
+									(setq file-re (concat "\\(?: src=\"\\| href=\"\\| poster=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
+									(while (re-search-forward file-re nil t)
+										(replace-match
+										 (propertize
+											(save-match-data (replace-regexp-in-string "#" "%23" new-file))
+											'changed t)
 										 t t nil 1)))))))))))
 
 (defun org-11ty--base-file-name (subtreep visible-only)
