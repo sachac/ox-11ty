@@ -49,7 +49,9 @@ for formatting the post title."
 (defcustom org-11ty-skip-private-files-regexp "gpg\\|private\\|secret\\|authinfo\\|ssh"
 	"Regular expression matching linked files that should cause an error when exporting."
 	:group 'org-export-11ty
-	:type 'string)
+	:type '(choice
+					'string
+					(const :tag "Do not filter" nil)))
 
 (defvar org-11ty-front-matter-functions nil
 	"Functions to call with the current front matter plist and info.")
