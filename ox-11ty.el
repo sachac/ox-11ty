@@ -134,7 +134,10 @@ copied only if the function returns non-nil.")
 				(unless (or (string-match "^#" file-name)
 										(get-text-property 0 'changed file-name)
 										(and org-11ty-copy-file-test-function
-												 (not (funcall org-11ty-copy-file-test-function file-name))))
+												 (not (funcall org-11ty-copy-file-test-function file-name)))
+										(and (org-url-p file-name)
+												 (not (string-match "^file:" file-name)))
+										(string= file-name ""))
 					(setq file-name
 								(replace-regexp-in-string
 								 "\\?.+" ""
