@@ -46,7 +46,7 @@ for formatting the post title."
   :group 'org-export-11ty
   :type 'integer)
 
-(defcustom org-11ty-skip-private-files-regexp "gpg\\|private\\|secret\\|authinfo\\|ssh"
+(defcustom org-11ty-skip-private-files-regexp "gpg\\|private\\|secret\\|authinfo\\|ssh\\|\\.env"
 	"Regular expression matching linked files that should cause an error when exporting."
 	:group 'org-export-11ty
 	:type '(choice
@@ -168,9 +168,10 @@ copied only if the function returns non-nil.")
 									(setq file-re (concat "\\(?: src=\"\\| href=\"\\| poster=\"\\)\\(\\(?:file://\\)?" (regexp-quote file-name) "\\)"))
 									(while (re-search-forward file-re nil t)
 										(replace-match
-										 (propertize
-											(save-match-data (replace-regexp-in-string "#" "%23" new-file))
-											'changed t)
+										 (save-match-data
+											 (propertize
+												(replace-regexp-in-string "#" "%23" new-file)
+												'changed t))
 										 t t nil 1)))))))))))
 
 (defun org-11ty--base-file-name (subtreep visible-only)
