@@ -112,7 +112,8 @@ for formatting the post title."
 
 (defun org-11ty-skip-private-files (filename)
 	"Filter out `org-11ty-skip-private-files-regexp' from FILENAME."
-	(if (string-match org-11ty-skip-private-files-regexp filename)
+	(if (and org-11ty-skip-private-files-regexp
+					 (string-match org-11ty-skip-private-files-regexp filename))
 			(error "Tried to link to %s" filename)
 		t))
 
@@ -133,8 +134,8 @@ copied only if the function returns non-nil.")
         (setq file-name (or (match-string 1) (match-string 2)))
 				(unless (or (string-match "^#" file-name)
 										(get-text-property 0 'changed file-name)
-										(and org-11ty-copy-file-test-function
-												 (not (funcall org-11ty-copy-file-test-function file-name)))
+										(and org-11ty-copy-file-test-function ; include only if the function returns non-nil
+												 (funcall org-11ty-copy-file-test-function file-name))
 										(and (org-url-p file-name)
 												 (not (string-match "^file:" file-name)))
 										(string= file-name ""))
